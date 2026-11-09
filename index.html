@@ -26,8 +26,8 @@
 
     <!-- تبويبات تسجيل الدخول وإنشاء الحساب -->
     <div class="flex border-b border-[#222e35] bg-[#182229] text-sm font-semibold">
-      <button id="tab-login" class="flex-1 py-3.5 text-emerald-400 border-b-2 border-emerald-500 transition">تسجيل دخول</button>
-      <button id="tab-register" class="flex-1 py-3.5 text-gray-400 border-b-2 border-transparent hover:text-gray-200 transition">حساب جديد</button>
+      <button type="button" id="tab-login" class="flex-1 py-3.5 text-emerald-400 border-b-2 border-emerald-500 transition">تسجيل دخول</button>
+      <button type="button" id="tab-register" class="flex-1 py-3.5 text-gray-400 border-b-2 border-transparent hover:text-gray-200 transition">حساب جديد</button>
     </div>
 
     <!-- النموذج -->
@@ -35,7 +35,6 @@
       <div id="auth-error" class="hidden mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs text-center"></div>
 
       <form id="auth-form" class="space-y-4">
-        <!-- خانة الاسم (تظهر في إنشاء الحساب فقط) -->
         <div id="name-field" class="hidden">
           <label class="block text-xs text-gray-400 mb-1">الاسم بالكامل (سيظهر للناس)</label>
           <div class="relative">

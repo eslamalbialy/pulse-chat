@@ -22,7 +22,7 @@
 
   <div class="flex h-full w-full relative overflow-hidden">
 
-    <!-- القائمة الجانبية (تأخذ الشاشة كاملة في الموبايل وتختفي عند فتح شات) -->
+    <!-- القائمة الجانبية -->
     <div id="sidebar-panel" class="w-full md:w-[380px] lg:w-[420px] bg-[#111b21] border-l border-[#222e35] flex flex-col h-full flex-shrink-0 z-20 transition-all">
       
       <!-- هيدر البروفايل الشخصي -->
@@ -35,24 +35,24 @@
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btn-new-group" title="إنشاء جروب جديد" class="w-9 h-9 rounded-full hover:bg-[#2a3942] text-gray-300 flex items-center justify-center transition">
-            <i class="fa-solid fa-users-medical text-sm"></i>
+          <button type="button" id="btn-new-group" title="إنشاء جروب جديد" class="w-9 h-9 rounded-full hover:bg-[#2a3942] text-gray-300 flex items-center justify-center transition">
+            <i class="fa-solid fa-users-viewfinder text-sm"></i>
           </button>
-          <button id="btn-open-profile-icon" title="تعديل البروفايل" class="w-9 h-9 rounded-full hover:bg-[#2a3942] text-gray-300 flex items-center justify-center transition">
+          <button type="button" id="btn-open-profile-icon" title="تعديل البروفايل" class="w-9 h-9 rounded-full hover:bg-[#2a3942] text-gray-300 flex items-center justify-center transition">
             <i class="fa-solid fa-gear text-sm"></i>
           </button>
-          <button id="btn-logout" title="تسجيل الخروج" class="w-9 h-9 rounded-full hover:bg-red-500/20 text-red-400 flex items-center justify-center transition">
+          <button type="button" id="btn-logout" title="تسجيل الخروج" class="w-9 h-9 rounded-full hover:bg-red-500/20 text-red-400 flex items-center justify-center transition">
             <i class="fa-solid fa-power-off text-sm"></i>
           </button>
         </div>
       </div>
 
-      <!-- شريط التبويبات للتنقل السريع -->
+      <!-- شريط التبويبات -->
       <div class="flex bg-[#182229] border-b border-[#222e35] text-xs font-bold text-gray-400">
-        <button id="tab-chats" class="flex-1 py-3 text-emerald-400 border-b-2 border-emerald-500 flex items-center justify-center gap-1.5 transition">
+        <button type="button" id="tab-chats" class="flex-1 py-3 text-emerald-400 border-b-2 border-emerald-500 flex items-center justify-center gap-1.5 transition">
           <i class="fa-solid fa-comments"></i> الدردشات والجروبات
         </button>
-        <button id="tab-users" class="flex-1 py-3 hover:text-gray-200 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition">
+        <button type="button" id="tab-users" class="flex-1 py-3 hover:text-gray-200 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition">
           <i class="fa-solid fa-user-group"></i> كل الأعضاء (<span id="users-count">0</span>)
         </button>
       </div>
@@ -70,7 +70,6 @@
         
         <!-- تبويب 1: المجتمع العام + الجروبات + المحادثات النشطة -->
         <div id="view-chats">
-          <!-- زر المجتمع العام الثابت -->
           <div id="item-global" class="flex items-center gap-3.5 p-3.5 hover:bg-[#202c33] cursor-pointer bg-[#2a3942]/40 transition">
             <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white text-xl shadow-md flex-shrink-0">
               <i class="fa-solid fa-earth-americas"></i>
@@ -84,7 +83,6 @@
             </div>
           </div>
 
-          <!-- عنوان الجروبات والمحادثات الخاصة -->
           <div class="px-4 py-2 bg-[#182229] text-[11px] font-bold text-gray-400 flex justify-between items-center">
             <span>الجروبات والمحادثات الخاصة</span>
           </div>
@@ -97,14 +95,13 @@
       </div>
     </div>
 
-    <!-- نافذة المحادثة (تكون مخفية في الموبايل وتظهر بملء الشاشة عند اختيار محادثة) -->
+    <!-- نافذة المحادثة -->
     <div id="chat-panel" class="hidden md:flex flex-1 flex-col h-full bg-[#0b141a] z-30 w-full">
       
-      <!-- هيدر المحادثة العلوية -->
+      <!-- هيدر المحادثة -->
       <div class="bg-[#202c33] px-3 py-2.5 flex items-center justify-between border-b border-[#222e35] shadow-sm">
         <div class="flex items-center gap-2.5">
-          <!-- زر الرجوع للموبايل فقط -->
-          <button id="btn-back-mobile" class="md:hidden w-9 h-9 rounded-full hover:bg-[#2a3942] text-gray-200 flex items-center justify-center">
+          <button type="button" id="btn-back-mobile" class="md:hidden w-9 h-9 rounded-full hover:bg-[#2a3942] text-gray-200 flex items-center justify-center">
             <i class="fa-solid fa-arrow-right"></i>
           </button>
           <img id="chat-header-avatar" src="https://ui-avatars.com/api/?name=Global&background=00a884&color=fff" class="w-10 h-10 rounded-full object-cover">
@@ -116,9 +113,7 @@
       </div>
 
       <!-- صندوق الرسائل -->
-      <div id="messages-box" class="flex-1 overflow-y-auto p-3 md:p-5 space-y-2.5 chat-bg flex flex-col">
-        <!-- الرسائل تضاف هنا تلقائياً -->
-      </div>
+      <div id="messages-box" class="flex-1 overflow-y-auto p-3 md:p-5 space-y-2.5 chat-bg flex flex-col"></div>
 
       <!-- شريط الكتابة والإرسال -->
       <form id="message-form" class="bg-[#202c33] p-2.5 md:p-3 flex items-center gap-2 border-t border-[#222e35]">
@@ -129,7 +124,7 @@
           autocomplete="off"
           class="flex-1 bg-[#2a3942] text-white placeholder-gray-400 text-sm px-4 py-2.5 rounded-full focus:outline-none focus:ring-1 focus:ring-emerald-500"
         >
-        <button type="submit" class="w-11 h-11 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-md transition flex-shrink-0">
+        <button type="submit" id="send-btn" class="w-11 h-11 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-md transition flex-shrink-0">
           <i class="fa-solid fa-paper-plane text-sm"></i>
         </button>
       </form>
@@ -142,7 +137,7 @@
     <div class="bg-[#202c33] w-full max-w-sm rounded-2xl p-5 border border-[#2a3942] shadow-2xl">
       <div class="flex justify-between items-center mb-4 pb-2 border-b border-[#2a3942]">
         <h3 class="font-bold text-white text-base">تعديل الملف الشخصي</h3>
-        <button id="close-profile-modal" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button type="button" id="close-profile-modal" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
       <div class="space-y-3.5 text-xs">
         <div>
@@ -157,17 +152,17 @@
           <label class="block text-gray-400 mb-1">رابط صورة البروفايل (اختياري)</label>
           <input type="url" id="prof-avatar" placeholder="https://..." class="w-full bg-[#111b21] border border-[#2a3942] rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-500">
         </div>
-        <button id="save-profile-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl mt-2 transition">حفظ التعديلات</button>
+        <button type="button" id="save-profile-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl mt-2 transition">حفظ التعديلات</button>
       </div>
     </div>
   </div>
 
-  <!-- نافذة إنشاء جروب جديد وإضافة أعضاء -->
+  <!-- نافذة إنشاء جروب جديد -->
   <div id="modal-group" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
     <div class="bg-[#202c33] w-full max-w-sm rounded-2xl p-5 border border-[#2a3942] shadow-2xl flex flex-col max-h-[85vh]">
       <div class="flex justify-between items-center mb-3 pb-2 border-b border-[#2a3942]">
         <h3 class="font-bold text-white text-base">إنشاء جروب جديد</h3>
-        <button id="close-group-modal" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button type="button" id="close-group-modal" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
       <div class="space-y-3 text-xs flex-1 overflow-hidden flex flex-col">
         <div>
@@ -175,10 +170,8 @@
           <input type="text" id="group-name-input" placeholder="مثال: شلة الصحاب، مبرمجين..." class="w-full bg-[#111b21] border border-[#2a3942] rounded-xl p-2.5 text-white focus:outline-none focus:border-emerald-500">
         </div>
         <label class="block text-gray-400">اختر الأعضاء لإضافتهم للجروب:</label>
-        <div id="group-members-select" class="flex-1 overflow-y-auto bg-[#111b21] rounded-xl p-2 divide-y divide-[#1f2c33] border border-[#2a3942]">
-          <!-- قائمة الأعضاء للاختيار -->
-        </div>
-        <button id="create-group-confirm" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition">إنشاء الجروب الآن</button>
+        <div id="group-members-select" class="flex-1 overflow-y-auto bg-[#111b21] rounded-xl p-2 divide-y divide-[#1f2c33] border border-[#2a3942]"></div>
+        <button type="button" id="create-group-confirm" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition">إنشاء الجروب الآن</button>
       </div>
     </div>
   </div>
