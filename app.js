@@ -1,33 +1,14 @@
-// app.js — Complete Vanilla JavaScript Firebase Auth + Firestore Chat Logic
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-  updateProfile
-} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  collection,
-  addDoc,
-  query,
-  where,
-  onSnapshot,
-  deleteDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { 
+  getAuth, onAuthStateChanged, signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, updateProfile, signOut 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+import { 
+  getFirestore, collection, doc, setDoc, getDoc, addDoc, 
+  onSnapshot, query, orderBy, serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// ============================================================================
-// YOUR FIREBASE CONFIGURATION
-// ============================================================================
+// إعدادات مشروعك على Firebase
 const firebaseConfig = {
   "apiKey": "AIzaSyAL0W_mu41w-mB4s8LqiqHhzXdUJAn_AVI",
   "authDomain": "mychatweb-c1198.firebaseapp.com",
@@ -38,329 +19,425 @@ const firebaseConfig = {
   "measurementId": "G-49QEP50HZJ"
 };
 
-// Initialize Firebase App, Authentication, and Cloud Firestore
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
+const db = getFirestore(app);
 
-// Helper: Generate a consistent avatar color from a user ID
-function pickAvatarColor(uid) {
-  const palette = ["#2563eb", "#0d9488", "#4f46e5", "#0284c7", "#059669", "#d97706", "#dc2626"];
-  let hash = 0;
-  for (let i = 0; i < uid.length; i++) {
-    hash = uid.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return palette[Math.abs(hash) % palette.length];
+// دالة مساعدة لتوليد صورة تلقائية باسم المستخدم
+function getAvatar(name, customUrl) {
+  if (customUrl && customUrl.trim() !== "") return customUrl;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=00a884&color=fff&bold=true`;
 }
 
-// Helper: Create or update the user's public profile document in Firestore
-async function syncUserProfile(user, customName) {
-  const displayName = (customName || user.displayName || user.email?.split("@")[0] || "Member").trim().slice(0, 60);
-  const avatarColor = pickAvatarColor(user.uid);
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      uid: user.uid,
-      displayName,
-      avatarColor,
-      status: "online",
-      visibility: "public",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-  } else {
-    await updateDoc(userRef, {
-      status: "online",
-      updatedAt: serverTimestamp()
-    });
-  }
-}
-
-const isLoginPage = Boolean(document.getElementById("auth-form"));
-const isChatPage = Boolean(document.getElementById("message-form"));
-
-// ============================================================================
-// PAGE 1 LOGIC: index.html (Login & Registration)
-// ============================================================================
-if (isLoginPage) {
-  let mode = "login";
-
+// ==========================================
+// القسم الأول: صفحة تسجيل الدخول (index.html)
+// ==========================================
+const authForm = document.getElementById("auth-form");
+if (authForm) {
+  let isLogin = true;
   const tabLogin = document.getElementById("tab-login");
   const tabRegister = document.getElementById("tab-register");
-  const nameWrapper = document.getElementById("name-field-wrapper");
-  const authTitle = document.getElementById("auth-title");
-  const authSubtitle = document.getElementById("auth-subtitle");
-  const submitBtn = document.getElementById("submit-btn");
-  const authForm = document.getElementById("auth-form");
-  const authAlert = document.getElementById("auth-alert");
-  const googleBtn = document.getElementById("google-btn");
+  const nameField = document.getElementById("name-field");
+  const submitBtn = document.getElementById("auth-submit");
+  const errorBox = document.getElementById("auth-error");
 
-  function showAlert(message, isError = true) {
-    authAlert.textContent = message;
-    authAlert.className = isError
-      ? "mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-xs font-medium text-red-700"
-      : "mb-4 p-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700";
-    authAlert.classList.remove("hidden");
-  }
+  tabLogin.onclick = () => {
+    isLogin = true;
+    nameField.classList.add("hidden");
+    tabLogin.className = "flex-1 py-3.5 text-emerald-400 border-b-2 border-emerald-500 transition";
+    tabRegister.className = "flex-1 py-3.5 text-gray-400 border-b-2 border-transparent transition";
+    submitBtn.innerHTML = `<span>دخول إلى الدردشة</span><i class="fa-solid fa-arrow-left text-xs"></i>`;
+  };
 
-  function setAuthMode(newMode) {
-    mode = newMode;
-    authAlert.classList.add("hidden");
-    if (mode === "login") {
-      tabLogin.className = "py-2 px-4 text-xs font-semibold rounded-md bg-white text-slate-900 shadow-sm transition-colors";
-      tabRegister.className = "py-2 px-4 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 transition-colors";
-      nameWrapper.classList.add("hidden");
-      authTitle.textContent = "Sign in to your account";
-      authSubtitle.textContent = "Enter your email and password below to join the live chat room.";
-      submitBtn.textContent = "Sign In to Chat";
-    } else {
-      tabRegister.className = "py-2 px-4 text-xs font-semibold rounded-md bg-white text-slate-900 shadow-sm transition-colors";
-      tabLogin.className = "py-2 px-4 text-xs font-semibold rounded-md text-slate-600 hover:text-slate-900 transition-colors";
-      nameWrapper.classList.remove("hidden");
-      authTitle.textContent = "Create your free account";
-      authSubtitle.textContent = "Register with your email and password to start chatting immediately.";
-      submitBtn.textContent = "Create Account & Join";
-    }
-  }
-
-  tabLogin.addEventListener("click", () => setAuthMode("login"));
-  tabRegister.addEventListener("click", () => setAuthMode("register"));
+  tabRegister.onclick = () => {
+    isLogin = false;
+    nameField.classList.remove("hidden");
+    tabRegister.className = "flex-1 py-3.5 text-emerald-400 border-b-2 border-emerald-500 transition";
+    tabLogin.className = "flex-1 py-3.5 text-gray-400 border-b-2 border-transparent transition";
+    submitBtn.innerHTML = `<span>إنشاء حساب جديد</span><i class="fa-solid fa-user-plus text-xs"></i>`;
+  };
 
   onAuthStateChanged(auth, (user) => {
-    if (user) {
-      window.location.href = "chat.html";
-    }
+    if (user) window.location.href = "chat.html";
   });
 
-  authForm.addEventListener("submit", async (e) => {
+  authForm.onsubmit = async (e) => {
     e.preventDefault();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-    const displayName = document.getElementById("displayName").value.trim();
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Please wait...";
+    errorBox.classList.add("hidden");
+    const email = document.getElementById("auth-email").value.trim();
+    const password = document.getElementById("auth-password").value;
+    const name = document.getElementById("auth-name").value.trim();
 
     try {
-      if (mode === "register") {
-        const credential = await createUserWithEmailAndPassword(auth, email, password);
-        if (displayName) {
-          await updateProfile(credential.user, { displayName });
-        }
-        await syncUserProfile(credential.user, displayName);
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
       } else {
-        const credential = await signInWithEmailAndPassword(auth, email, password);
-        await syncUserProfile(credential.user);
+        if (!name) throw new Error("يرجى كتابة اسمك أولاً");
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(cred.user, { displayName: name });
+        await setDoc(doc(db, "users", cred.user.uid), {
+          uid: cred.user.uid,
+          name: name,
+          email: email,
+          bio: "أهلاً! أنا أستخدم PulseChat",
+          avatar: getAvatar(name, ""),
+          updatedAt: serverTimestamp()
+        });
       }
       window.location.href = "chat.html";
-    } catch (error) {
-      showAlert(error.message || "Authentication failed. Please check your credentials.");
-      submitBtn.disabled = false;
-      submitBtn.textContent = mode === "login" ? "Sign In to Chat" : "Create Account & Join";
+    } catch (err) {
+      errorBox.textContent = "خطأ في البيانات: تأكد من البريد الإلكتروني وكلمة المرور (6 أحرف على الأقل)";
+      errorBox.classList.remove("hidden");
     }
-  });
-
-  googleBtn.addEventListener("click", async () => {
-    try {
-      const credential = await signInWithPopup(auth, googleProvider);
-      await syncUserProfile(credential.user);
-      window.location.href = "chat.html";
-    } catch (error) {
-      showAlert(error.message || "Google Sign-In failed.");
-    }
-  });
+  };
 }
 
-// ============================================================================
-// PAGE 2 LOGIC: chat.html (Real-Time Chat Room)
-// ============================================================================
-if (isChatPage) {
+// ==========================================
+// القسم الثاني: صفحة الدردشة (chat.html)
+// ==========================================
+const messagesBox = document.getElementById("messages-box");
+if (messagesBox) {
   let currentUser = null;
-  let currentRoom = "general";
+  let currentUserData = {};
+  let allUsers = [];
+  let activeRoom = { id: "global_community", title: "المجتمع العام 🌍", sub: "غرفة مفتوحة لجميع أعضاء الموقع", avatar: getAvatar("Global", "") };
   let unsubscribeMessages = null;
 
-  const userBadge = document.getElementById("user-badge");
-  const logoutBtn = document.getElementById("logout-btn");
-  const roomLabel = document.getElementById("current-room-label");
-  const messagesContainer = document.getElementById("messages-container");
-  const messageForm = document.getElementById("message-form");
-  const messageInput = document.getElementById("message-input");
-  const chatAlert = document.getElementById("chat-alert");
-  const roomButtons = document.querySelectorAll(".room-btn");
+  const sidebarPanel = document.getElementById("sidebar-panel");
+  const chatPanel = document.getElementById("chat-panel");
 
-  function showChatError(msg) {
-    chatAlert.textContent = msg;
-    chatAlert.classList.remove("hidden");
-  }
-
-  function formatTime(timestamp) {
-    if (!timestamp || !timestamp.toDate) return "Just now";
-    return timestamp.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  }
-
-  function subscribeToRoom(roomId) {
-    if (unsubscribeMessages) {
-      unsubscribeMessages();
+  // التنقل بين الموبايل والكمبيوتر
+  function openChatOnMobile() {
+    if (window.innerWidth < 768) {
+      sidebarPanel.classList.add("hidden");
+      chatPanel.classList.remove("hidden");
+      chatPanel.classList.add("flex");
     }
-
-    currentRoom = roomId;
-    roomLabel.textContent = "#" + roomId;
-    messageInput.placeholder = "Write a message in #" + roomId + "...";
-
-    const messagesQuery = query(
-      collection(db, "messages"),
-      where("roomId", "==", roomId)
-    );
-
-    unsubscribeMessages = onSnapshot(
-      messagesQuery,
-      (snapshot) => {
-        const docs = [];
-        snapshot.forEach((docSnap) => {
-          docs.push({ id: docSnap.id, ...docSnap.data() });
-        });
-
-        docs.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : Date.now();
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : Date.now();
-          return timeA - timeB;
-        });
-
-        renderMessages(docs);
-      },
-      (error) => {
-        showChatError("Real-time listener error: " + error.message);
-      }
-    );
   }
 
-  function renderMessages(messages) {
-    messagesContainer.innerHTML = "";
+  document.getElementById("btn-back-mobile").onclick = () => {
+    chatPanel.classList.add("hidden");
+    chatPanel.classList.remove("flex");
+    sidebarPanel.classList.remove("hidden");
+  };
 
-    if (messages.length === 0) {
-      const emptyDiv = document.createElement("div");
-      emptyDiv.className = "text-center py-12 text-sm text-slate-500";
-      emptyDiv.textContent = "No messages in #" + currentRoom + " yet. Send the first message below!";
-      messagesContainer.appendChild(emptyDiv);
-      return;
-    }
-
-    messages.forEach((msg) => {
-      const isMe = currentUser && msg.senderId === currentUser.uid;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = isMe ? "flex flex-col items-end" : "flex flex-col items-start";
-
-      const metaRow = document.createElement("div");
-      metaRow.className = "flex items-center gap-2 mb-1 text-xs text-slate-500";
-
-      const authorSpan = document.createElement("span");
-      authorSpan.className = "font-semibold text-slate-700";
-      authorSpan.textContent = isMe ? "You (" + msg.senderName + ")" : msg.senderName;
-
-      const sep = document.createElement("span");
-      sep.textContent = "·";
-
-      const timeSpan = document.createElement("span");
-      timeSpan.className = "tabular-nums";
-      timeSpan.textContent = formatTime(msg.createdAt);
-
-      metaRow.appendChild(authorSpan);
-      metaRow.appendChild(sep);
-      metaRow.appendChild(timeSpan);
-
-      if (isMe) {
-        const deleteBtn = document.createElement("button");
-        deleteBtn.type = "button";
-        deleteBtn.className = "text-red-600 hover:underline ml-2 cursor-pointer";
-        deleteBtn.textContent = "Delete";
-        deleteBtn.addEventListener("click", async () => {
-          try {
-            await deleteDoc(doc(db, "messages", msg.id));
-          } catch (err) {
-            showChatError("Could not delete message: " + err.message);
-          }
-        });
-        metaRow.appendChild(deleteBtn);
-      }
-
-      const bubble = document.createElement("div");
-      bubble.className = isMe
-        ? "max-w-lg px-4 py-2.5 rounded-xl bg-blue-600 text-white text-sm leading-relaxed break-words"
-        : "max-w-lg px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-sm leading-relaxed break-words";
-      bubble.textContent = msg.text;
-
-      wrapper.appendChild(metaRow);
-      wrapper.appendChild(bubble);
-      messagesContainer.appendChild(wrapper);
-    });
-
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-  }
-
-  roomButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const targetRoom = btn.getAttribute("data-room");
-      roomButtons.forEach((b) => {
-        b.className = "room-btn w-full text-left px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors";
-      });
-      btn.className = "room-btn w-full text-left px-3 py-2 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 transition-colors";
-      subscribeToRoom(targetRoom);
-    });
-  });
-
+  // التحقق من المستخدم المسجل
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       window.location.href = "index.html";
       return;
     }
     currentUser = user;
-    const displayName = (user.displayName || user.email?.split("@")[0] || "Member").slice(0, 60);
-    userBadge.textContent = displayName + (user.email ? " · " + user.email : "");
 
-    try {
-      await syncUserProfile(user);
-    } catch (err) {
-      console.warn("Profile sync notice:", err);
+    // التأكد من وجود ملف للمستخدم في قاعدة البيانات
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+    const defaultName = user.displayName || user.email.split("@")[0];
+
+    if (!snap.exists()) {
+      currentUserData = {
+        uid: user.uid,
+        name: defaultName,
+        email: user.email,
+        bio: "متصل على PulseChat",
+        avatar: getAvatar(defaultName, "")
+      };
+      await setDoc(userRef, currentUserData);
+    } else {
+      currentUserData = snap.data();
     }
 
-    subscribeToRoom(currentRoom);
+    updateMyHeaderUI();
+    listenToUsers();
+    listenToRooms();
+    switchRoom(activeRoom.id, activeRoom.title, activeRoom.sub, activeRoom.avatar);
   });
 
-  messageForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!currentUser) return;
+  function updateMyHeaderUI() {
+    document.getElementById("my-name").textContent = currentUserData.name;
+    document.getElementById("my-bio").textContent = currentUserData.bio || "متصل الآن";
+    document.getElementById("my-avatar").src = getAvatar(currentUserData.name, currentUserData.avatar);
+  }
 
-    const text = messageInput.value.trim();
-    if (!text) return;
+  // التبويبات (الدردشات / الأعضاء)
+  const tabChats = document.getElementById("tab-chats");
+  const tabUsers = document.getElementById("tab-users");
+  const viewChats = document.getElementById("view-chats");
+  const viewUsers = document.getElementById("view-users");
 
-    messageInput.value = "";
-    const senderName = (currentUser.displayName || currentUser.email?.split("@")[0] || "Member").slice(0, 60);
+  tabChats.onclick = () => {
+    viewChats.classList.remove("hidden");
+    viewUsers.classList.add("hidden");
+    tabChats.className = "flex-1 py-3 text-emerald-400 border-b-2 border-emerald-500 flex items-center justify-center gap-1.5 transition";
+    tabUsers.className = "flex-1 py-3 text-gray-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition";
+  };
 
-    try {
-      await addDoc(collection(db, "messages"), {
-        roomId: currentRoom,
-        text: text.slice(0, 1000),
-        senderId: currentUser.uid,
-        senderName,
-        senderAvatarColor: pickAvatarColor(currentUser.uid),
-        edited: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+  tabUsers.onclick = () => {
+    viewUsers.classList.remove("hidden");
+    viewChats.classList.add("hidden");
+    tabUsers.className = "flex-1 py-3 text-emerald-400 border-b-2 border-emerald-500 flex items-center justify-center gap-1.5 transition";
+    tabChats.className = "flex-1 py-3 text-gray-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition";
+  };
+
+  // جلب كل المستخدمين المسجلين في الموقع لحظياً
+  function listenToUsers() {
+    onSnapshot(collection(db, "users"), (snapshot) => {
+      allUsers = [];
+      viewUsers.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const u = docSnap.data();
+        if (u.uid !== currentUser.uid) allUsers.push(u);
       });
-    } catch (error) {
-      showChatError("Failed to send message: " + error.message);
-    }
-  });
 
-  logoutBtn.addEventListener("click", async () => {
+      document.getElementById("users-count").textContent = allUsers.length;
+
+      if (allUsers.length === 0) {
+        viewUsers.innerHTML = `<div class="p-6 text-center text-xs text-gray-500">لا يوجد أعضاء آخرين بعد. شارك الرابط مع أصدقائك!</div>`;
+        return;
+      }
+
+      allUsers.forEach((u) => {
+        const item = document.createElement("div");
+        item.className = "flex items-center gap-3 p-3.5 hover:bg-[#202c33] cursor-pointer transition";
+        item.innerHTML = `
+          <img src="${getAvatar(u.name, u.avatar)}" class="w-11 h-11 rounded-full object-cover">
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-white truncate">${u.name}</div>
+            <div class="text-xs text-gray-400 truncate">${u.bio || "عضو في الموقع"}</div>
+          </div>
+          <span class="text-[11px] bg-emerald-600/20 text-emerald-400 px-2.5 py-1 rounded-full">مراسلة</span>
+        `;
+        item.onclick = () => startDirectChat(u);
+        viewUsers.appendChild(item);
+      });
+    });
+  }
+
+  // فتح شات خاص بينك وبين أي عضو
+  async function startDirectChat(otherUser) {
+    const sortedIds = [currentUser.uid, otherUser.uid].sort();
+    const roomId = `dm_${sortedIds[0]}_${sortedIds[1]}`;
+
+    await setDoc(doc(db, "rooms", roomId), {
+      id: roomId,
+      type: "dm",
+      participants: sortedIds,
+      names: {
+        [currentUser.uid]: currentUserData.name,
+        [otherUser.uid]: otherUser.name
+      },
+      avatars: {
+        [currentUser.uid]: getAvatar(currentUserData.name, currentUserData.avatar),
+        [otherUser.uid]: getAvatar(otherUser.name, otherUser.avatar)
+      },
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    switchRoom(roomId, otherUser.name, otherUser.bio || "محادثة خاصة", getAvatar(otherUser.name, otherUser.avatar));
+    openChatOnMobile();
+  }
+
+  // الاستماع للجروبات والمحادثات الخاصة المشترك فيها المستخدم
+  function listenToRooms() {
+    const roomsContainer = document.getElementById("my-rooms-list");
+    onSnapshot(collection(db, "rooms"), (snapshot) => {
+      roomsContainer.innerHTML = "";
+      snapshot.forEach((docSnap) => {
+        const room = docSnap.data();
+        if (!room.participants || !room.participants.includes(currentUser.uid)) return;
+
+        let title = room.name;
+        let sub = "جروب دردشة جماعي";
+        let avatar = getAvatar(room.name || "Group", "");
+
+        if (room.type === "dm") {
+          const otherId = room.participants.find(id => id !== currentUser.uid);
+          title = (room.names && room.names[otherId]) ? room.names[otherId] : "مستخدم";
+          avatar = (room.avatars && room.avatars[otherId]) ? room.avatars[otherId] : getAvatar(title, "");
+          sub = "محادثة خاصة 🔒";
+        } else {
+          sub = `جروب • ${room.participants.length} أعضاء`;
+        }
+
+        const div = document.createElement("div");
+        div.className = "flex items-center gap-3.5 p-3.5 hover:bg-[#202c33] cursor-pointer transition";
+        div.innerHTML = `
+          <img src="${avatar}" class="w-11 h-11 rounded-full object-cover flex-shrink-0">
+          <div class="flex-1 min-w-0">
+            <div class="font-bold text-sm text-white truncate">${title}</div>
+            <div class="text-xs text-gray-400 truncate">${sub}</div>
+          </div>
+        `;
+        div.onclick = () => {
+          switchRoom(room.id, title, sub, avatar);
+          openChatOnMobile();
+        };
+        roomsContainer.appendChild(div);
+      });
+    });
+  }
+
+  // زر المجتمع العام
+  document.getElementById("item-global").onclick = () => {
+    switchRoom("global_community", "المجتمع العام 🌍", "غرفة الدردشة المفتوحة لكل أعضاء الموقع", getAvatar("Global", ""));
+    openChatOnMobile();
+  };
+
+  // تبديل الغرفة وتحميل الرسائل اللحظية
+  function switchRoom(roomId, title, sub, avatar) {
+    activeRoom = { id: roomId, title, sub, avatar };
+    document.getElementById("chat-header-title").textContent = title;
+    document.getElementById("chat-header-sub").textContent = sub;
+    document.getElementById("chat-header-avatar").src = avatar;
+
     if (unsubscribeMessages) unsubscribeMessages();
+    messagesBox.innerHTML = `<div class="text-center text-xs text-gray-500 my-4">جاري تحميل الرسائل...</div>`;
+
+    const q = query(collection(db, "rooms", roomId, "messages"), orderBy("createdAt", "asc"));
+    unsubscribeMessages = onSnapshot(q, (snapshot) => {
+      messagesBox.innerHTML = "";
+      if (snapshot.empty) {
+        messagesBox.innerHTML = `
+          <div class="m-auto text-center p-6 bg-[#182229]/90 rounded-2xl border border-[#222e35] max-w-xs">
+            <p class="text-xs text-emerald-400 font-bold mb-1">لا توجد رسائل هنا بعد 👋</p>
+            <p class="text-[11px] text-gray-400">كن أول من يبدأ المحادثة الآن!</p>
+          </div>`;
+        return;
+      }
+
+      snapshot.forEach((docSnap) => {
+        const msg = docSnap.data();
+        const isMe = msg.senderId === currentUser.uid;
+        const bubble = document.createElement("div");
+        bubble.className = `flex flex-col max-w-[80%] md:max-w-[65%] ${isMe ? "mr-auto items-end" : "ml-auto items-start"}`;
+
+        bubble.innerHTML = `
+          <div class="px-3.5 py-2 rounded-2xl text-sm shadow-sm ${
+            isMe 
+              ? "bg-[#005c4b] text-white rounded-tl-none" 
+              : "bg-[#202c33] text-gray-100 rounded-tr-none border border-[#2a3942]"
+          }">
+            ${!isMe ? `<div class="text-[11px] font-bold text-emerald-400 mb-0.5">${msg.senderName}</div>` : ""}
+            <div class="leading-relaxed break-words">${msg.text}</div>
+          </div>
+        `;
+        messagesBox.appendChild(bubble);
+      });
+      messagesBox.scrollTop = messagesBox.scrollHeight;
+    });
+  }
+
+  // إرسال رسالة جديدة
+  document.getElementById("message-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("message-input");
+    const text = input.value.trim();
+    if (!text || !currentUser) return;
+
+    input.value = "";
+    await addDoc(collection(db, "rooms", activeRoom.id, "messages"), {
+      text: text,
+      senderId: currentUser.uid,
+      senderName: currentUserData.name,
+      createdAt: serverTimestamp()
+    });
+  };
+
+  // إدارة البروفايل الشخصي
+  const modalProfile = document.getElementById("modal-profile");
+  const openProfile = () => {
+    document.getElementById("prof-name").value = currentUserData.name || "";
+    document.getElementById("prof-bio").value = currentUserData.bio || "";
+    document.getElementById("prof-avatar").value = currentUserData.avatar || "";
+    modalProfile.classList.remove("hidden");
+    modalProfile.classList.add("flex");
+  };
+
+  document.getElementById("btn-open-profile").onclick = openProfile;
+  document.getElementById("btn-open-profile-icon").onclick = openProfile;
+  document.getElementById("close-profile-modal").onclick = () => {
+    modalProfile.classList.add("hidden");
+    modalProfile.classList.remove("flex");
+  };
+
+  document.getElementById("save-profile-btn").onclick = async () => {
+    const newName = document.getElementById("prof-name").value.trim();
+    const newBio = document.getElementById("prof-bio").value.trim();
+    const newAvatar = document.getElementById("prof-avatar").value.trim();
+    if (!newName) return;
+
+    currentUserData.name = newName;
+    currentUserData.bio = newBio;
+    currentUserData.avatar = getAvatar(newName, newAvatar);
+
+    await setDoc(doc(db, "users", currentUser.uid), currentUserData, { merge: true });
+    updateMyHeaderUI();
+    modalProfile.classList.add("hidden");
+    modalProfile.classList.remove("flex");
+  };
+
+  // إنشاء جروب جديد وإضافة أعضاء
+  const modalGroup = document.getElementById("modal-group");
+  document.getElementById("btn-new-group").onclick = () => {
+    const list = document.getElementById("group-members-select");
+    list.innerHTML = "";
+    if (allUsers.length === 0) {
+      list.innerHTML = `<div class="p-3 text-center text-gray-500">لا يوجد أعضاء مسجلين حالياً لإضافتهم</div>`;
+    } else {
+      allUsers.forEach((u) => {
+        const row = document.createElement("label");
+        row.className = "flex items-center gap-3 p-2.5 hover:bg-[#202c33] cursor-pointer";
+        row.innerHTML = `
+          <input type="checkbox" value="${u.uid}" class="w-4 h-4 accent-emerald-500 rounded">
+          <img src="${getAvatar(u.name, u.avatar)}" class="w-8 h-8 rounded-full object-cover">
+          <span class="text-white font-semibold">${u.name}</span>
+        `;
+        list.appendChild(row);
+      });
+    }
+    modalGroup.classList.remove("hidden");
+    modalGroup.classList.add("flex");
+  };
+
+  document.getElementById("close-group-modal").onclick = () => {
+    modalGroup.classList.add("hidden");
+    modalGroup.classList.remove("flex");
+  };
+
+  document.getElementById("create-group-confirm").onclick = async () => {
+    const groupName = document.getElementById("group-name-input").value.trim();
+    if (!groupName) return alert("يرجى كتابة اسم الجروب");
+
+    const checked = Array.from(document.querySelectorAll("#group-members-select input:checked")).map(cb => cb.value);
+    const participants = [currentUser.uid, ...checked];
+    const roomId = "grp_" + Date.now();
+
+    await setDoc(doc(db, "rooms", roomId), {
+      id: roomId,
+      name: groupName,
+      type: "group",
+      participants: participants,
+      createdAt: serverTimestamp()
+    });
+
+    document.getElementById("group-name-input").value = "";
+    modalGroup.classList.add("hidden");
+    modalGroup.classList.remove("flex");
+    switchRoom(roomId, groupName, `جروب • ${participants.length} أعضاء`, getAvatar(groupName, ""));
+    openChatOnMobile();
+  };
+
+  // البحث السريع
+  document.getElementById("search-input").oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    Array.from(viewUsers.children).forEach(el => {
+      el.style.display = el.textContent.toLowerCase().includes(term) ? "flex" : "none";
+    });
+  };
+
+  // تسجيل الخروج
+  document.getElementById("btn-logout").onclick = async () => {
     await signOut(auth);
     window.location.href = "index.html";
-  });
+  };
 }
